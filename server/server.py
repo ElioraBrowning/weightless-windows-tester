@@ -605,6 +605,26 @@ def _check_screenshot_storage() -> dict[str, Any]:
 # Window Enumeration & Focus Helpers
 # ---------------------------------------------------------------------------
 
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+
+def _get_process_name(pid: int) -> str:
+    """Resolve the executable basename (e.g., 'Antigravity.exe') for a PID."""
+    if not pid:
+        return ""
+    hproc = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not hproc:
+        return ""
+    try:
+        size = wintypes.DWORD(512)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if kernel32.QueryFullProcessImageNameW(hproc, 0, buf, ctypes.byref(size)):
+            return os.path.basename(buf.value)
+        return ""
+    finally:
+        kernel32.CloseHandle(hproc)
+
+
 def _enum_visible_windows(include_minimized: bool = True) -> list[dict[str, Any]]:
     windows: list[dict[str, Any]] = []
     WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
@@ -628,10 +648,12 @@ def _enum_visible_windows(include_minimized: bool = True) -> list[dict[str, Any]
         user32.GetWindowRect(hwnd, ctypes.byref(rc))
         pid = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        pid_int = int(pid.value)
         windows.append(
             {
                 "hwnd": int(hwnd),
-                "pid": int(pid.value),
+                "pid": pid_int,
+                "process_name": _get_process_name(pid_int),
                 "title": title,
                 "is_minimized": is_minimized,
                 "bounds": {
@@ -1127,14 +1149,23 @@ def list_windows(include_minimized: bool = True) -> dict[str, Any]:
 
 @mcp.tool()
 def focus_window(window_title: str) -> dict[str, Any]:
-    """Find a window matching window_title, restore if minimized, and bring to foreground."""
+    """Find a window matching window_title (by title or process name), restore if minimized,
+    and bring to foreground."""
     wins = _enum_visible_windows(include_minimized=True)
     needle = window_title.strip().lower()
-    matches = [w for w in wins if needle in w["title"].lower()]
+    matches = [
+        w
+        for w in wins
+        if needle in w["title"].lower() or needle in w.get("process_name", "").lower()
+    ]
     if not matches:
         try:
             pattern = re.compile(window_title, re.IGNORECASE)
-            matches = [w for w in wins if pattern.search(w["title"])]
+            matches = [
+                w
+                for w in wins
+                if pattern.search(w["title"]) or pattern.search(w.get("process_name", ""))
+            ]
         except re.error:
             matches = []
 
@@ -1142,12 +1173,26 @@ def focus_window(window_title: str) -> dict[str, Any]:
         return {
             "success": False,
             "error": f"No visible window matched '{window_title}'.",
-            "available_titles": [w["title"] for w in wins[:25]],
+            "available_windows": [
+                {"title": w["title"], "process_name": w.get("process_name", "")}
+                for w in wins[:25]
+            ],
         }
 
-    # Prefer exact match if multiple substring matches exist
-    exact = [w for w in matches if w["title"].lower() == needle]
-    target = exact[0] if exact else matches[0]
+    def _area(w: dict[str, Any]) -> int:
+        b = w["bounds"]
+        return max(0, b["w"]) * max(0, b["h"])
+
+    # Prefer exact title match, then exact process name match, then largest non-minimized window
+    exact_title = [w for w in matches if w["title"].lower() == needle]
+    exact_proc = [
+        w
+        for w in matches
+        if w.get("process_name", "").lower() in (needle, f"{needle}.exe")
+    ]
+    candidates = exact_title or exact_proc or matches
+    candidates.sort(key=lambda w: (not w["is_minimized"], _area(w)), reverse=True)
+    target = candidates[0]
     hwnd = target["hwnd"]
 
     if user32.IsIconic(hwnd):
@@ -1188,6 +1233,7 @@ def focus_window(window_title: str) -> dict[str, Any]:
         "success": True,
         "focused": user32.GetForegroundWindow() == hwnd,
         "hwnd": hwnd,
+        "process_name": target.get("process_name", ""),
         "title": target["title"],
         "bounds": {
             "x": int(rc.left),

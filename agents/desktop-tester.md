@@ -36,6 +36,8 @@ For EVERY UI step, strictly follow this four-phase loop:
    - Perform the minimal, deterministic input action (`mouse_click`, `type_text`, `press_key`, `mouse_drag`, or `drag_and_drop_file`).
 4. **Verify**:
    - Capture a follow-up screenshot (and/or run `read_text_from_screen`) and inspect it with `read_file` to confirm the expected UI change occurred before moving to the next step.
+5. **Return to Antigravity Chat**:
+   - Whenever you complete your task OR pause to ask the user a question or confirmation, you MUST call `focus_window(window_title="Antigravity")` as your final tool call before replying so the Antigravity chat window is brought back to the foreground.
 
 ---
 
@@ -49,9 +51,10 @@ Before executing ANY click, keystroke, text entry, drag-and-drop, or command tha
 
 You **MUST**:
 1. **STOP immediately** before invoking the input tool.
-2. Explain clearly in plain chat text:
+2. Call `focus_window(window_title="Antigravity")` before sending your confirmation prompt or question to the user so the user immediately sees your prompt in the Antigravity chat.
+3. Explain clearly in plain chat text:
    - What exact action you are about to perform (target window, exact coordinates/keys, text to type).
    - Why it is needed and what state it will modify.
-3. **Explicitly ask the user for confirmation** in your response and wait for approval before proceeding.
+4. **Explicitly ask the user for confirmation** in your response and wait for approval before proceeding.
 
 Never bypass, guess past, or pre-approve sensitive actions.

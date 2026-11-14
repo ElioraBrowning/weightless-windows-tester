@@ -23,8 +23,8 @@ This skill pairs with the **`desktop-vision`** MCP server (`server/server.py`, l
   - Returns `lines` and `words` with global coordinates `(x, y, w, h)` and pre-computed `(center_x, center_y)` for direct clicking without coordinate guessing.
 
 ### 3. Window, Cursor & Keyboard Control
-- `list_windows(include_minimized=True)`: Lists visible windows with non-empty titles and global bounds.
-- `focus_window(window_title)`: Restores if minimized, brings to foreground using Win32 `AttachThreadInput`, and returns window bounds.
+- `list_windows(include_minimized=True)`: Lists visible windows with non-empty titles, `process_name`, and global bounds.
+- `focus_window(window_title)`: Matches by window title or executable process name (e.g., `"Antigravity"`), restores if minimized, brings to foreground using Win32 `AttachThreadInput`, and returns window bounds.
 - `mouse_click(x, y, button="left", clicks=1)`
 - `mouse_move(x, y, duration=0.1)`
 - `mouse_drag(x1, y1, x2, y2, duration=0.4, button="left")`
@@ -41,6 +41,7 @@ This skill pairs with the **`desktop-vision`** MCP server (`server/server.py`, l
 
 ## Observe-Plan-Act-Verify Loop
 1. **Observe**: Call `list_windows()` / `focus_window(...)`, then `take_screenshot(show_grid=True)` (inspect with `read_file`) and/or `read_text_from_screen()` to obtain exact global `(x, y)` coordinates.
-2. **Plan & Safety Check**: Verify target coordinates visually and via OCR; pause for explicit user confirmation before any sensitive or destructive action.
+2. **Plan & Safety Check**: Verify target coordinates visually and via OCR; pause and call `focus_window("Antigravity")` before asking for explicit user confirmation on any sensitive or destructive action.
 3. **Act**: Execute the smallest precise action (`mouse_click`, `type_text`, `press_key`, etc.).
 4. **Verify**: Take a follow-up screenshot or OCR pass to confirm UI state transitioned as expected.
+5. **Return to Antigravity**: Call `focus_window(window_title="Antigravity")` upon completing a task or pausing for user input so the chat window returns to the foreground.

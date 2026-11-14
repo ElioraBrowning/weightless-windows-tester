@@ -11,10 +11,10 @@ An Antigravity plugin providing Windows 10/11 OS-level desktop vision, **100% of
 - **Per-Monitor v2 DPI Awareness:** Coordinates across single and multi-monitor setups match physical screen pixels without scaling drift.
 - **Gridded Visual Grounding (`take_screenshot`):** Overlays coordinate grid lines and global `(x, y)` pixel labels directly on saved PNG captures, and tracks cumulative screenshot storage with automatic alerts every `1 GiB`.
 - **100% Offline Windows Native OCR (`read_text_from_screen`):** Uses built-in `Windows.Media.Ocr` (via `winrt-Windows.Media.Ocr`) to return line- and word-level text with global bounding boxes `(x, y, w, h)` and pre-computed click centers `(center_x, center_y)`.
-- **Reliable Window Control (`list_windows`, `focus_window`):** Enumerates visible windows, restores minimized windows, and bypasses Windows foreground focus locks using `AttachThreadInput`.
+- **Reliable Window Control (`list_windows`, `focus_window`):** Enumerates visible windows (with title and executable `process_name`), restores minimized windows, and bypasses Windows foreground focus locks using `AttachThreadInput`.
 - **Cursor, Keyboard, Clipboard & File Drop:** Unicode `SendInput` typing, single keys/hotkeys, clipboard get/set, and `drag_and_drop_file` supporting `wm_dropfiles`, `explorer` (`SHOpenFolderAndSelectItems` physical drag), and `clipboard` (`CF_HDROP`) methods.
 - **Hardware Failsafe & Emergency Abort:** Disables PyAutoGUI corner failsafe (preventing false triggers from mouse drift) and registers a hardware abort hotkey (**`Pause`**, **`Ctrl+Shift+Esc`**, or **`Ctrl+Alt+Esc`**) to cancel running input sequences immediately.
-- **Dedicated `desktop-tester` Subagent:** Enforces an **Observe–Plan–Act–Verify** loop and pauses for explicit chat confirmation before any sensitive system, config, credential, online-account, or destructive file action.
+- **Dedicated `desktop-tester` Subagent:** Enforces an **Observe–Plan–Act–Verify** loop, automatically refocuses the **Antigravity** chat window whenever finishing a task or pausing for user input, and requires explicit chat confirmation before any sensitive system, config, credential, online-account, or destructive file action.
 
 ---
 
