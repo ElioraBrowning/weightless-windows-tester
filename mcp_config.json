@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "desktop-vision": {
+      "command": "python",
+      "args": [
+        "scripts/launcher.py"
+      ]
+    }
+  }
+}

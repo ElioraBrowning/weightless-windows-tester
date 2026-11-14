@@ -1,0 +1,19 @@
+# Local runtime artifacts, virtual environments, screenshots, and logs
+.local_desktop_agent/
+.venv/
+venv/
+screenshots/
+logs/
+storage_state.json
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Environment & OS files
+.env
+.env.*
+.DS_Store
+Thumbs.db
