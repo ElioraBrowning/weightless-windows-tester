@@ -19,7 +19,7 @@ Note on `take_screenshot`: It returns JSON containing `file_path` (under `~/.loc
 
 Note on coordinates: All grid labels on `take_screenshot(show_grid=True)` and all bounding boxes (`x, y, w, h`, `center_x, center_y`) from `read_text_from_screen` use **global desktop coordinates** in physical pixels (Per-Monitor v2 DPI-aware). Use those coordinates directly in `mouse_click(x, y)`, `mouse_move(x, y)`, and `mouse_drag(...)`.
 
-Note on hardware abort: `pyautogui.FAILSAFE` is disabled so corner mouse drift never interrupts automation. Pressing **`Pause`**, **`Ctrl+Shift+Esc`**, or **`Ctrl+Alt+Esc`** triggers an immediate emergency abort of any active input sequence.
+Note on hardware input suppression & abort: `pyautogui.FAILSAFE` is disabled so corner mouse drift never interrupts automation. Physical mousepad touches and external mouse movements are automatically suppressed during active input execution (`WH_MOUSE_LL`) so hand contact never disrupts clicks. Emergency abort hotkeys: **`Triple-Esc`** (press `Esc` 3 times quickly within 1 second), **`Pause`**, or **`Ctrl+Shift+Esc`** / **`Ctrl+Alt+Esc`** halt execution and restore mousepad control immediately.
 
 ---
 

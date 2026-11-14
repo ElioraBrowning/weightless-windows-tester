@@ -13,7 +13,7 @@ An Antigravity plugin providing Windows 10/11 OS-level desktop vision, **100% of
 - **100% Offline Windows Native OCR (`read_text_from_screen`):** Uses built-in `Windows.Media.Ocr` (via `winrt-Windows.Media.Ocr`) to return line- and word-level text with global bounding boxes `(x, y, w, h)` and pre-computed click centers `(center_x, center_y)`.
 - **Reliable Window Control (`list_windows`, `focus_window`):** Enumerates visible windows (with title and executable `process_name`), restores minimized windows, and bypasses Windows foreground focus locks using `AttachThreadInput`.
 - **Cursor, Keyboard, Clipboard & File Drop:** Unicode `SendInput` typing, single keys/hotkeys, clipboard get/set, and `drag_and_drop_file` supporting `wm_dropfiles`, `explorer` (`SHOpenFolderAndSelectItems` physical drag), and `clipboard` (`CF_HDROP`) methods.
-- **Hardware Failsafe & Emergency Abort:** Disables PyAutoGUI corner failsafe (preventing false triggers from mouse drift) and registers a hardware abort hotkey (**`Pause`**, **`Ctrl+Shift+Esc`**, or **`Ctrl+Alt+Esc`**) to cancel running input sequences immediately.
+- **Hardware Input Suppression & Emergency Abort:** Automatically suppresses physical touchpad touches and external mouse movements during agent actions (`WH_MOUSE_LL`) so accidental hand brushing never throws off coordinate clicks. Registers emergency hardware abort sequences (**Triple-`Esc`** within 1s, **`Pause`**, or **`Ctrl+Shift+Esc`**) to cancel running actions and unblock the mouse immediately.
 - **Dedicated `desktop-tester` Subagent:** Enforces an **Observe–Plan–Act–Verify** loop, automatically refocuses the **Antigravity** chat window whenever finishing a task or pausing for user input, and requires explicit chat confirmation before any sensitive system, config, credential, online-account, or destructive file action.
 
 ---
@@ -73,11 +73,12 @@ desktop-tester/
 
 ---
 
-## Safety & Emergency Abort
+## Safety, Mousepad Suppression & Emergency Abort
 
-- **Corner Failsafe Disabled:** Resting or bumped cursors at screen corners (`(0, 0)`) will not interrupt tests.
-- **Emergency Abort Hotkey:** Press **`Pause`**, **`Ctrl+Shift+Esc`**, or **`Ctrl+Alt+Esc`** at any time to immediately halt an active typing, clicking, or dragging sequence.
-- **Approval Gate:** `desktop-tester` is instructed to pause and request explicit confirmation before changing Windows/OS settings, app configs, credentials, online account actions, or deleting/overwriting files.
+- **Physical Mouse/Touchpad Suppression (`WH_MOUSE_LL`):** During active clicking, moving, typing, and dragging, physical mousepad contact and external mouse movements are automatically dropped so resting hands or accidental nudges cannot derail coordinate targeting. Synthetic agent actions execute cleanly without requiring administrator privileges.
+- **Safety Watchdog:** If an action completes or encounters an error, mousepad control is restored immediately. An automatic 15-second watchdog timer prevents the mouse from ever staying locked.
+- **Emergency Abort Sequences:** Press **`Esc` three times quickly** (`Triple-Esc`), **`Pause / Break`**, or **`Ctrl+Shift+Esc`** / **`Ctrl+Alt+Esc`** to immediately cancel running input actions, restore physical mouse control, and stop the agent.
+- **Approval Gate:** `desktop-tester` is instructed to pause, refocus Antigravity chat, and request explicit confirmation before changing Windows/OS settings, app configs, credentials, online account actions, or deleting/overwriting files.
 
 ---
 

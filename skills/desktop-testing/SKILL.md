@@ -25,19 +25,27 @@ This skill pairs with the **`desktop-vision`** MCP server (`server/server.py`, l
 ### 3. Window, Cursor & Keyboard Control
 - `list_windows(include_minimized=True)`: Lists visible windows with non-empty titles, `process_name`, and global bounds.
 - `focus_window(window_title)`: Matches by window title or executable process name (e.g., `"Antigravity"`), restores if minimized, brings to foreground using Win32 `AttachThreadInput`, and returns window bounds.
-- `mouse_click(x, y, button="left", clicks=1)`
-- `mouse_move(x, y, duration=0.1)`
-- `mouse_drag(x1, y1, x2, y2, duration=0.4, button="left")`
-- `type_text(text, delay_between_keys=0.05)`
+- `mouse_click(x, y, button="left", clicks=1)`: Clicks target coordinate while suppressing physical mousepad touches.
+- `mouse_move(x, y, duration=0.1)`: Moves cursor smoothly while suppressing physical mousepad touches.
+- `mouse_drag(x1, y1, x2, y2, duration=0.4, button="left")`: Drags between coordinates while suppressing physical mousepad touches.
+- `type_text(text, delay_between_keys=0.05)`: Unicode typing into focused control.
 - `press_key(key)`: Single keys (`enter`, `tab`, `esc`) or hotkeys (`ctrl+a`, `alt+tab`).
+- `set_physical_mouse_lock(locked=True/False, timeout_seconds=15)`: Manually lock or unlock physical mousepad/mouse input for multi-step sequences with automatic safety timeout.
 
 ### 4. Clipboard & File Drag-and-Drop
 - `set_clipboard(text)` / `get_clipboard()`
 - `drag_and_drop_file(file_path, target_x, target_y, method="auto")`: Supports `"auto"`, `"wm_dropfiles"`, `"explorer"`, and `"clipboard"`.
 
-### 5. Hardware Failsafe & Abort
-- `pyautogui.FAILSAFE` is disabled so resting/falling mouse cursors in corners never trigger accidental aborts.
-- Emergency Abort hotkey: press `Pause`, `Ctrl+Shift+Esc`, or `Ctrl+Alt+Esc` to immediately cancel any running input loop.
+### 5. Hardware Input Suppression & Emergency Abort
+- **Physical Mouse/Touchpad Suppression (`WH_MOUSE_LL`)**:
+  - Automatically drops physical touchpad touches and external mouse movements during agent actions, preventing accidental hand brushing from throwing off coordinate clicks.
+  - Software/synthetic clicks (`LLMHF_INJECTED`) pass through seamlessly without requiring administrator privileges.
+  - Automatic safety watchdog ensures physical mouse is restored even in case of unexpected errors or timeout (15s).
+- **Emergency Hardware Abort Sequence**:
+  - **Triple-`Esc`** (press `Esc` 3 times quickly within 1 second)
+  - **`Pause / Break`** key
+  - **`Ctrl+Shift+Esc`** or **`Ctrl+Alt+Esc`**
+  - Pressing any abort sequence immediately kills physical mouse suppression, halts the running action, and raises an emergency stop.
 
 ## Observe-Plan-Act-Verify Loop
 1. **Observe**: Call `list_windows()` / `focus_window(...)`, then `take_screenshot(show_grid=True)` (inspect with `read_file`) and/or `read_text_from_screen()` to obtain exact global `(x, y)` coordinates.

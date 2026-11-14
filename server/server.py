@@ -9,6 +9,7 @@ emergency abort listener.
 from __future__ import annotations
 
 import base64
+import contextlib
 import ctypes
 from ctypes import wintypes
 import io
@@ -206,14 +207,42 @@ class DROPFILES(ctypes.Structure):
 
 
 # ---------------------------------------------------------------------------
-# Emergency Hardware Abort Listener (Pause or Ctrl+Shift+Esc / Ctrl+Alt+Esc)
+# Low-Level Mouse Hook (Suppresses physical mouse/touchpad while agent works)
+# & Hardware Emergency Abort Listener (Triple-Esc / Pause / Ctrl+Shift+Esc)
 # ---------------------------------------------------------------------------
+
+WH_MOUSE_LL = 14
+LLMHF_INJECTED = 0x00000001
+LLMHF_LOWER_IL_INJECTED = 0x00000002
+
+
+class MSLLHOOKSTRUCT(ctypes.Structure):
+    _fields_ = [
+        ("pt", wintypes.POINT),
+        ("mouseData", wintypes.DWORD),
+        ("flags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", ctypes.c_size_t),
+    ]
+
+
+HOOKPROC = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_int, wintypes.WPARAM, ctypes.c_void_p)
 
 _ABORT_EVENT = threading.Event()
 _ABORT_LOCK = threading.Lock()
 _LAST_ABORT_TIME: float = 0.0
 _PRESSED_KEYS: set[Any] = set()
+_ESC_PRESS_TIMES: list[float] = []
 _ABORT_LISTENER_STARTED = False
+
+_MOUSE_HOOK = None
+_HOOK_PROC_INST = None
+_PHYSICAL_MOUSE_BLOCKED = False
+_MOUSE_BLOCK_LOCK = threading.Lock()
+_LAST_BLOCK_TIME: float = 0.0
+_MAX_BLOCK_DURATION: float = 15.0
+_MOUSE_HOOK_THREAD_STARTED = False
+_MOUSE_HOOK_STOP_EVENT = threading.Event()
 
 
 def _is_ctrl_pressed() -> bool:
@@ -251,21 +280,31 @@ def _is_alt_pressed() -> bool:
 
 
 def _trigger_abort(reason: str) -> None:
-    global _LAST_ABORT_TIME
+    global _LAST_ABORT_TIME, _PHYSICAL_MOUSE_BLOCKED
     with _ABORT_LOCK:
         _ABORT_EVENT.set()
         _LAST_ABORT_TIME = time.time()
-    logger.warning("EMERGENCY ABORT triggered: %s", reason)
+    # Immediately unblock physical mouse so the user has full hardware control
+    with _MOUSE_BLOCK_LOCK:
+        _PHYSICAL_MOUSE_BLOCKED = False
+    logger.warning("EMERGENCY ABORT triggered: %s (physical mouse unblocked immediately)", reason)
 
 
 def _on_key_press(key: Any) -> None:
+    global _ESC_PRESS_TIMES
     _PRESSED_KEYS.add(key)
     if key == pynput_keyboard.Key.pause:
-        _trigger_abort("Pause key")
-    elif key == pynput_keyboard.Key.esc and _is_ctrl_pressed() and (
-        _is_shift_pressed() or _is_alt_pressed()
-    ):
-        _trigger_abort("Ctrl+Shift/Alt+Esc")
+        _trigger_abort("Pause/Break key pressed")
+    elif key == pynput_keyboard.Key.esc:
+        if _is_ctrl_pressed() and (_is_shift_pressed() or _is_alt_pressed()):
+            _trigger_abort("Ctrl+Shift/Alt+Esc pressed")
+        else:
+            now = time.time()
+            _ESC_PRESS_TIMES.append(now)
+            # Retain only presses within the last 1.0 second
+            _ESC_PRESS_TIMES = [t for t in _ESC_PRESS_TIMES if now - t <= 1.0]
+            if len(_ESC_PRESS_TIMES) >= 3:
+                _trigger_abort("Triple-Esc emergency abort (Esc pressed 3 times within 1 second)")
 
 
 def _on_key_release(key: Any) -> None:
@@ -284,14 +323,84 @@ def _ensure_abort_listener() -> None:
         )
         listener.start()
         _ABORT_LISTENER_STARTED = True
-        logger.info("Emergency abort keyboard listener started (Pause / Ctrl+Shift+Esc / Ctrl+Alt+Esc).")
+        logger.info(
+            "Emergency abort keyboard listener started (Triple-Esc / Pause / Ctrl+Shift+Esc / Ctrl+Alt+Esc)."
+        )
     except Exception as exc:
         logger.warning("Failed to start emergency abort listener: %s", exc)
+
+
+def _low_level_mouse_proc(nCode: int, wParam: wintypes.WPARAM, lParam: ctypes.c_void_p) -> int:
+    global _PHYSICAL_MOUSE_BLOCKED
+    if nCode >= 0 and _PHYSICAL_MOUSE_BLOCKED:
+        # Watchdog: auto-release if blocked longer than MAX_BLOCK_DURATION
+        if time.time() - _LAST_BLOCK_TIME > _MAX_BLOCK_DURATION:
+            _PHYSICAL_MOUSE_BLOCKED = False
+            logger.warning("Physical mouse suppression auto-released due to watchdog timeout.")
+        else:
+            info = MSLLHOOKSTRUCT.from_address(lParam)
+            # If the event was NOT generated synthetically by the agent (SendInput/pyautogui), drop it!
+            if (info.flags & LLMHF_INJECTED) == 0:
+                return 1
+    return user32.CallNextHookEx(_MOUSE_HOOK, nCode, wParam, lParam)
+
+
+_HOOK_PROC_INST = HOOKPROC(_low_level_mouse_proc)
+
+
+def _mouse_hook_worker(ready_ev: threading.Event) -> None:
+    global _MOUSE_HOOK
+    _MOUSE_HOOK = user32.SetWindowsHookExW(WH_MOUSE_LL, _HOOK_PROC_INST, None, 0)
+    if not _MOUSE_HOOK:
+        logger.warning("Failed to install WH_MOUSE_LL hook (Error %d).", ctypes.GetLastError())
+    else:
+        logger.info("Low-level WH_MOUSE_LL mouse hook installed successfully.")
+    ready_ev.set()
+    msg = wintypes.MSG()
+    while not _MOUSE_HOOK_STOP_EVENT.is_set():
+        while user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1):
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
+        time.sleep(0.005)
+    if _MOUSE_HOOK:
+        user32.UnhookWindowsHookEx(_MOUSE_HOOK)
+        _MOUSE_HOOK = None
+        logger.info("WH_MOUSE_LL mouse hook uninstalled.")
+
+
+def _ensure_mouse_hook() -> None:
+    global _MOUSE_HOOK_THREAD_STARTED
+    if _MOUSE_HOOK_THREAD_STARTED:
+        return
+    _MOUSE_HOOK_THREAD_STARTED = True
+    ready_ev = threading.Event()
+    th = threading.Thread(target=_mouse_hook_worker, args=(ready_ev,), daemon=True)
+    th.start()
+    ready_ev.wait(2.0)
+
+
+@contextlib.contextmanager
+def _suppress_physical_mouse(duration_cap: float = 15.0):
+    """Context manager to suppress physical mousepad/mouse input while allowing synthetic input."""
+    global _PHYSICAL_MOUSE_BLOCKED, _LAST_BLOCK_TIME, _MAX_BLOCK_DURATION
+    _ensure_mouse_hook()
+    _ensure_abort_listener()
+    _check_abort()
+    with _MOUSE_BLOCK_LOCK:
+        _LAST_BLOCK_TIME = time.time()
+        _MAX_BLOCK_DURATION = max(1.0, float(duration_cap))
+        _PHYSICAL_MOUSE_BLOCKED = True
+    try:
+        yield
+    finally:
+        with _MOUSE_BLOCK_LOCK:
+            _PHYSICAL_MOUSE_BLOCKED = False
 
 
 def _begin_input_action() -> None:
     """Clear any prior abort flag before beginning a new input action."""
     _ensure_abort_listener()
+    _ensure_mouse_hook()
     with _ABORT_LOCK:
         _ABORT_EVENT.clear()
 
@@ -300,8 +409,8 @@ def _check_abort() -> None:
     """Raise RuntimeError immediately if an emergency abort was triggered."""
     if _ABORT_EVENT.is_set():
         raise RuntimeError(
-            "EMERGENCY ABORT triggered via hardware hotkey (Pause / Ctrl+Shift+Esc / Ctrl+Alt+Esc). "
-            "Input sequence halted immediately."
+            "EMERGENCY ABORT triggered via hardware hotkey (Triple-Esc / Pause / Ctrl+Shift+Esc). "
+            "Input sequence halted and physical mouse restored immediately."
         )
 
 
@@ -1251,23 +1360,33 @@ def mouse_click(
     button: Literal["left", "right", "middle"] = "left",
     clicks: int = 1,
 ) -> dict[str, Any]:
-    """Move cursor to global (x, y) and click with the specified mouse button."""
+    """Move cursor to global (x, y) and click with the specified mouse button.
+
+    Physical mousepad/mouse inputs are suppressed during execution to prevent drift.
+    Emergency abort hotkeys: Triple-Esc, Pause, or Ctrl+Shift+Esc.
+    """
     _begin_input_action()
     count = max(1, int(clicks))
-    for idx in range(count):
-        _check_abort()
-        pyautogui.click(x=int(x), y=int(y), button=button)
-        if idx + 1 < count:
-            time.sleep(0.08)
+    with _suppress_physical_mouse():
+        for idx in range(count):
+            _check_abort()
+            pyautogui.click(x=int(x), y=int(y), button=button)
+            if idx + 1 < count:
+                time.sleep(0.08)
     return {"clicked": True, "x": int(x), "y": int(y), "button": button, "clicks": count}
 
 
 @mcp.tool()
 def mouse_move(x: int, y: int, duration: float = 0.1) -> dict[str, Any]:
-    """Move the cursor smoothly to global (x, y)."""
+    """Move the cursor smoothly to global (x, y).
+
+    Physical mousepad/mouse inputs are suppressed during movement to prevent drift.
+    Emergency abort hotkeys: Triple-Esc, Pause, or Ctrl+Shift+Esc.
+    """
     _begin_input_action()
     _check_abort()
-    pyautogui.moveTo(int(x), int(y), duration=max(0.0, float(duration)))
+    with _suppress_physical_mouse():
+        pyautogui.moveTo(int(x), int(y), duration=max(0.0, float(duration)))
     pos = pyautogui.position()
     return {"moved": True, "x": int(pos.x), "y": int(pos.y)}
 
@@ -1281,9 +1400,14 @@ def mouse_drag(
     duration: float = 0.4,
     button: Literal["left", "right", "middle"] = "left",
 ) -> dict[str, Any]:
-    """Press and drag the mouse from global (x1, y1) to (x2, y2)."""
+    """Press and drag the mouse from global (x1, y1) to (x2, y2).
+
+    Physical mousepad/mouse inputs are suppressed during drag to prevent drift.
+    Emergency abort hotkeys: Triple-Esc, Pause, or Ctrl+Shift+Esc.
+    """
     _begin_input_action()
-    _drag_between(int(x1), int(y1), int(x2), int(y2), duration=float(duration), button=button)
+    with _suppress_physical_mouse(duration_cap=max(5.0, float(duration) + 3.0)):
+        _drag_between(int(x1), int(y1), int(x2), int(y2), duration=float(duration), button=button)
     return {
         "dragged": True,
         "from": {"x": int(x1), "y": int(y1)},
@@ -1294,34 +1418,74 @@ def mouse_drag(
 
 @mcp.tool()
 def type_text(text: str, delay_between_keys: float = 0.05) -> dict[str, Any]:
-    """Type text character-by-character into the focused control using Unicode SendInput."""
+    """Type text character-by-character into the focused control using Unicode SendInput.
+
+    Physical mousepad/mouse inputs are suppressed while typing to keep cursor locked.
+    Emergency abort hotkeys: Triple-Esc, Pause, or Ctrl+Shift+Esc.
+    """
     _begin_input_action()
     delay = max(0.0, float(delay_between_keys))
     typed = 0
-    for ch in text:
-        _check_abort()
-        _send_unicode_char(ch)
-        typed += 1
-        if delay > 0:
-            time.sleep(delay)
+    with _suppress_physical_mouse(duration_cap=max(5.0, len(text) * (delay + 0.02) + 2.0)):
+        for ch in text:
+            _check_abort()
+            _send_unicode_char(ch)
+            typed += 1
+            if delay > 0:
+                time.sleep(delay)
     return {"typed_chars": typed}
 
 
 @mcp.tool()
 def press_key(key: str) -> dict[str, Any]:
-    """Press a single key ('enter', 'tab', 'esc') or '+'-separated hotkey ('ctrl+a', 'alt+tab')."""
+    """Press a single key ('enter', 'tab', 'esc') or '+'-separated hotkey ('ctrl+a', 'alt+tab').
+
+    Physical mousepad/mouse inputs are suppressed during key press.
+    Emergency abort hotkeys: Triple-Esc, Pause, or Ctrl+Shift+Esc.
+    """
     _begin_input_action()
     _check_abort()
     raw = key.strip()
-    if "+" in raw:
-        parts = [_normalize_key_name(p) for p in raw.split("+") if p.strip()]
-        if not parts:
-            raise ValueError(f"Invalid hotkey specification: '{key}'")
-        pyautogui.hotkey(*parts)
-        return {"pressed_hotkey": parts}
-    norm = _normalize_key_name(raw)
-    pyautogui.press(norm)
-    return {"pressed_key": norm}
+    with _suppress_physical_mouse():
+        if "+" in raw:
+            parts = [_normalize_key_name(p) for p in raw.split("+") if p.strip()]
+            if not parts:
+                raise ValueError(f"Invalid hotkey specification: '{key}'")
+            pyautogui.hotkey(*parts)
+            return {"pressed_hotkey": parts}
+        norm = _normalize_key_name(raw)
+        pyautogui.press(norm)
+        return {"pressed_key": norm}
+
+
+@mcp.tool()
+def set_physical_mouse_lock(locked: bool, timeout_seconds: float = 15.0) -> dict[str, Any]:
+    """Manually lock or unlock physical mousepad/mouse input for an extended operation.
+
+    When locked, physical mousepad touches and external mouse movements are dropped
+    while synthetic agent actions execute uninterrupted. The lock automatically
+    releases after timeout_seconds or immediately if an emergency abort hotkey is
+    pressed (Triple-Esc, Pause, Ctrl+Shift+Esc).
+
+    Args:
+        locked: True to suppress physical mouse/touchpad; False to re-enable.
+        timeout_seconds: Automatic safety release timeout in seconds (default 15.0, max 60.0).
+    """
+    global _PHYSICAL_MOUSE_BLOCKED, _LAST_BLOCK_TIME, _MAX_BLOCK_DURATION
+    _ensure_mouse_hook()
+    _ensure_abort_listener()
+    with _MOUSE_BLOCK_LOCK:
+        if locked:
+            _LAST_BLOCK_TIME = time.time()
+            _MAX_BLOCK_DURATION = min(60.0, max(1.0, float(timeout_seconds)))
+            _PHYSICAL_MOUSE_BLOCKED = True
+        else:
+            _PHYSICAL_MOUSE_BLOCKED = False
+    return {
+        "locked": bool(_PHYSICAL_MOUSE_BLOCKED),
+        "timeout_seconds": _MAX_BLOCK_DURATION if locked else 0.0,
+        "escape_keys": ["Triple-Esc", "Pause", "Ctrl+Shift+Esc"],
+    }
 
 
 @mcp.tool()
@@ -1361,12 +1525,13 @@ async def drag_and_drop_file(
     if not resolved.exists():
         raise FileNotFoundError(f"File does not exist: {resolved}")
 
-    if method in ("auto", "wm_dropfiles"):
-        return _drop_via_wm_dropfiles(resolved, int(target_x), int(target_y))
-    if method == "clipboard":
-        return _drop_via_clipboard_cf_hdrop(resolved, int(target_x), int(target_y))
-    if method == "explorer":
-        return await _drop_via_explorer_drag(resolved, int(target_x), int(target_y))
+    with _suppress_physical_mouse(duration_cap=15.0):
+        if method in ("auto", "wm_dropfiles"):
+            return _drop_via_wm_dropfiles(resolved, int(target_x), int(target_y))
+        if method == "clipboard":
+            return _drop_via_clipboard_cf_hdrop(resolved, int(target_x), int(target_y))
+        if method == "explorer":
+            return await _drop_via_explorer_drag(resolved, int(target_x), int(target_y))
     raise ValueError(f"Unsupported drag_and_drop_file method: '{method}'")
 
 
