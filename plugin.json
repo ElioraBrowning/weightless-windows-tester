@@ -3,6 +3,11 @@
   "displayName": "Desktop Vision & Control Tester",
   "version": "1.0.0",
   "description": "Windows 10/11 OS-level desktop vision, offline Windows.Media.Ocr text localization, window management, cursor/keyboard automation, and the desktop-tester subagent.",
+  "author": {
+    "name": "ElioraBrowning",
+    "url": "https://github.com/ElioraBrowning"
+  },
+  "repository": "https://github.com/ElioraBrowning/weightless-windows-tester",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
     "Use @desktop-tester to take a gridded screenshot of the primary monitor and read visible UI text with coordinates",
