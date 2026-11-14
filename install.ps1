@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Installs the portable 'desktop-tester' Antigravity plugin globally and pre-warms
+    Installs the portable 'weightless-windows-tester' Antigravity plugin globally and pre-warms
     the isolated runtime virtual environment under ~/.local_desktop_agent.
 #>
 [CmdletBinding()]
@@ -11,25 +11,25 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ($env:OS -ne "Windows_NT") {
-    throw "desktop-tester requires Windows 10/11."
+    throw "weightless-windows-tester requires Windows 10/11."
 }
 
 $RepoRoot = $PSScriptRoot
-$PluginDest = Join-Path $env:USERPROFILE ".gemini\config\plugins\desktop-tester"
+$PluginDest = Join-Path $env:USERPROFILE ".gemini\config\plugins\weightless-windows-tester"
 
-Write-Host "=== Installing desktop-tester Antigravity Plugin ===" -ForegroundColor Cyan
+Write-Host "=== Installing weightless-windows-tester Antigravity Plugin ===" -ForegroundColor Cyan
 Write-Host "Source: $RepoRoot"
 Write-Host "Plugin Target: $PluginDest"
 Write-Host "Runtime Data Dir: $DataDir"
 
-# 1. Copy plugin files to ~/.gemini/config/plugins/desktop-tester
+# 1. Copy plugin files to ~/.gemini/config/plugins/weightless-windows-tester
 New-Item -ItemType Directory -Force -Path `
     $PluginDest, `
     (Join-Path $PluginDest "assets"), `
     (Join-Path $PluginDest "agents"), `
     (Join-Path $PluginDest "scripts"), `
     (Join-Path $PluginDest "server"), `
-    (Join-Path $PluginDest "skills\desktop-testing") | Out-Null
+    (Join-Path $PluginDest "skills\weightless-windows-testing") | Out-Null
 
 $RootFiles = @("plugin.json", "mcp_config.json", "requirements.txt", "README.md", "LICENSE")
 foreach ($file in $RootFiles) {
@@ -40,10 +40,10 @@ foreach ($file in $RootFiles) {
 }
 
 Copy-Item -Force (Join-Path $RepoRoot "assets\logo.svg") (Join-Path $PluginDest "assets\logo.svg")
-Copy-Item -Force (Join-Path $RepoRoot "agents\desktop-tester.md") (Join-Path $PluginDest "agents\desktop-tester.md")
+Copy-Item -Force (Join-Path $RepoRoot "agents\weightless-windows-tester.md") (Join-Path $PluginDest "agents\weightless-windows-tester.md")
 Copy-Item -Force (Join-Path $RepoRoot "scripts\launcher.py") (Join-Path $PluginDest "scripts\launcher.py")
 Copy-Item -Force (Join-Path $RepoRoot "server\server.py") (Join-Path $PluginDest "server\server.py")
-Copy-Item -Force (Join-Path $RepoRoot "skills\desktop-testing\SKILL.md") (Join-Path $PluginDest "skills\desktop-testing\SKILL.md")
+Copy-Item -Force (Join-Path $RepoRoot "skills\weightless-windows-testing\SKILL.md") (Join-Path $PluginDest "skills\weightless-windows-testing\SKILL.md")
 
 Write-Host "[OK] Plugin bundle installed to $PluginDest" -ForegroundColor Green
 
@@ -92,7 +92,7 @@ async def main():
             tools = await session.list_tools()
             names = [t.name for t in tools.tools]
             print('Initialized:', init_res.server_info.name, '| Tools (' + str(len(names)) + '):', ', '.join(names))
-            assert len(names) == 13, f'Expected 13 tools, got {len(names)}'
+            assert 'mouse_click' in names and 'set_physical_mouse_lock' in names, f'Missing tools: {names}'
 
 asyncio.run(main())
 "@

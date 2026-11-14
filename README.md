@@ -1,6 +1,6 @@
-# Desktop Vision & Control Tester (`desktop-tester`)
+# Weightless Windows Tester (`weightless-windows-tester`)
 
-An Antigravity plugin providing Windows 10/11 OS-level desktop vision, **100% offline Windows native OCR (`Windows.Media.Ocr`)**, multi-window focus management, cursor/keyboard control, clipboard utilities, multi-strategy file drag-and-drop, and a dedicated **`desktop-tester`** automation subagent.
+An Antigravity plugin providing Windows 10/11 OS-level desktop vision, **100% offline Windows native OCR (`Windows.Media.Ocr`)**, multi-window focus management, cursor/keyboard control with **physical mousepad suppression**, clipboard utilities, multi-strategy file drag-and-drop, and the dedicated **`@weightless-windows-tester`** automation subagent.
 
 > **Platform Requirement:** Windows 10 / Windows 11 (`x64`) with Python 3.10+ installed on `PATH`.
 
@@ -14,7 +14,7 @@ An Antigravity plugin providing Windows 10/11 OS-level desktop vision, **100% of
 - **Reliable Window Control (`list_windows`, `focus_window`):** Enumerates visible windows (with title and executable `process_name`), restores minimized windows, and bypasses Windows foreground focus locks using `AttachThreadInput`.
 - **Cursor, Keyboard, Clipboard & File Drop:** Unicode `SendInput` typing, single keys/hotkeys, clipboard get/set, and `drag_and_drop_file` supporting `wm_dropfiles`, `explorer` (`SHOpenFolderAndSelectItems` physical drag), and `clipboard` (`CF_HDROP`) methods.
 - **Hardware Input Suppression & Emergency Abort:** Automatically suppresses physical touchpad touches and external mouse movements during agent actions (`WH_MOUSE_LL`) so accidental hand brushing never throws off coordinate clicks. Registers emergency hardware abort sequences (**Triple-`Esc`** within 1s, **`Pause`**, or **`Ctrl+Shift+Esc`**) to cancel running actions and unblock the mouse immediately.
-- **Dedicated `desktop-tester` Subagent:** Enforces an **Observe–Plan–Act–Verify** loop, automatically refocuses the **Antigravity** chat window whenever finishing a task or pausing for user input, and requires explicit chat confirmation before any sensitive system, config, credential, online-account, or destructive file action.
+- **Dedicated `@weightless-windows-tester` Subagent:** Enforces an **Observe–Plan–Act–Verify** loop, automatically refocuses the **Antigravity** chat window whenever finishing a task or pausing for user input, and requires explicit chat confirmation before any sensitive system, config, credential, online-account, or destructive file action.
 
 ---
 
@@ -24,15 +24,15 @@ An Antigravity plugin providing Windows 10/11 OS-level desktop vision, **100% of
 Clone this repository and run [`install.ps1`](install.ps1):
 
 ```powershell
-git clone <your-repo-url> desktop-tester
-cd desktop-tester
+git clone https://github.com/ElioraBrowning/weightless-windows-tester.git weightless-windows-tester
+cd weightless-windows-tester
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-This installs the plugin into `%USERPROFILE%\.gemini\config\plugins\desktop-tester`, pre-creates an isolated virtual environment at `%USERPROFILE%\.local_desktop_agent\.venv`, and verifies the MCP stdio handshake.
+This installs the plugin into `%USERPROFILE%\.gemini\config\plugins\weightless-windows-tester`, pre-creates an isolated virtual environment at `%USERPROFILE%\.local_desktop_agent\.venv`, and verifies the MCP stdio handshake.
 
 ### Option 2: Portable Direct Plugin Copy
-Copy (or clone) this folder directly to `%USERPROFILE%\.gemini\config\plugins\desktop-tester`. On first MCP startup, `scripts/launcher.py` automatically creates `%USERPROFILE%\.local_desktop_agent\.venv` and installs `requirements.txt` (writing bootstrap logs to `stderr` so MCP `stdout` stays clean).
+Copy (or clone) this folder directly to `%USERPROFILE%\.gemini\config\plugins\weightless-windows-tester`. On first MCP startup, `scripts/launcher.py` automatically creates `%USERPROFILE%\.local_desktop_agent\.venv` and installs `requirements.txt` (writing bootstrap logs to `stderr` so MCP `stdout` stays clean).
 
 You can override the runtime storage location (venv, screenshots, logs) by setting the `DESKTOP_TESTER_DATA_DIR` environment variable.
 
@@ -41,11 +41,11 @@ You can override the runtime storage location (venv, screenshots, logs) by setti
 ## Usage Examples
 
 ```text
-@desktop-tester Focus the Calculator window, take a gridded screenshot of monitor 0, locate buttons via Windows OCR, compute 7 * 6, and verify the result visually.
+@weightless-windows-tester Focus the Calculator window, take a gridded screenshot of monitor 0, locate buttons via Windows OCR, compute 7 * 6, and verify the result visually.
 ```
 
 ```text
-@desktop-tester List all open windows, focus Notepad, paste the test snippet into a new empty tab, and verify with a follow-up screenshot without saving.
+@weightless-windows-tester List all open windows, focus Notepad, paste the test snippet into a new empty tab, and verify with a follow-up screenshot without saving.
 ```
 
 ---
@@ -53,7 +53,7 @@ You can override the runtime storage location (venv, screenshots, logs) by setti
 ## Repository Structure
 
 ```text
-desktop-tester/
+weightless-windows-tester/
 ├── plugin.json                        # Antigravity plugin manifest
 ├── mcp_config.json                    # Portable stdio MCP entry -> scripts/launcher.py
 ├── requirements.txt                   # Python dependencies (Windows winrt + UI automation)
@@ -61,14 +61,14 @@ desktop-tester/
 ├── assets/
 │   └── logo.svg                       # Plugin icon
 ├── agents/
-│   └── desktop-tester.md              # Subagent persona, loop, and safety protocol
+│   └── weightless-windows-tester.md   # Subagent persona, loop, and safety protocol
 ├── skills/
-│   └── desktop-testing/
+│   └── weightless-windows-testing/
 │       └── SKILL.md                   # Tool workflow reference skill
 ├── scripts/
 │   └── launcher.py                    # Self-bootstrapping portable MCP launcher
 └── server/
-    └── server.py                      # MCPServer ("desktop-vision") implementation
+    └── server.py                      # MCPServer ("weightless-windows-vision") implementation
 ```
 
 ---
@@ -78,7 +78,7 @@ desktop-tester/
 - **Physical Mouse/Touchpad Suppression (`WH_MOUSE_LL`):** During active clicking, moving, typing, and dragging, physical mousepad contact and external mouse movements are automatically dropped so resting hands or accidental nudges cannot derail coordinate targeting. Synthetic agent actions execute cleanly without requiring administrator privileges.
 - **Safety Watchdog:** If an action completes or encounters an error, mousepad control is restored immediately. An automatic 15-second watchdog timer prevents the mouse from ever staying locked.
 - **Emergency Abort Sequences:** Press **`Esc` three times quickly** (`Triple-Esc`), **`Pause / Break`**, or **`Ctrl+Shift+Esc`** / **`Ctrl+Alt+Esc`** to immediately cancel running input actions, restore physical mouse control, and stop the agent.
-- **Approval Gate:** `desktop-tester` is instructed to pause, refocus Antigravity chat, and request explicit confirmation before changing Windows/OS settings, app configs, credentials, online account actions, or deleting/overwriting files.
+- **Approval Gate:** `weightless-windows-tester` is instructed to pause, refocus Antigravity chat, and request explicit confirmation before changing Windows/OS settings, app configs, credentials, online account actions, or deleting/overwriting files.
 
 ---
 

@@ -1167,7 +1167,7 @@ def _drag_between(
 # MCP Server Definition & Tools
 # ---------------------------------------------------------------------------
 
-mcp = MCPServer("desktop-vision")
+mcp = MCPServer("weightless-windows-vision")
 
 
 @mcp.tool()
@@ -1537,5 +1537,5 @@ async def drag_and_drop_file(
 
 if __name__ == "__main__":
     _ensure_abort_listener()
-    logger.info("Starting desktop-vision MCP server (DPI mode: %s)", DPI_MODE)
+    logger.info("Starting weightless-windows-vision MCP server (DPI mode: %s)", DPI_MODE)
     mcp.run(transport="stdio")

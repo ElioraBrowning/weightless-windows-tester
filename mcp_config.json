@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "desktop-vision": {
+    "weightless-windows-vision": {
       "command": "python",
       "args": [
         "scripts/launcher.py"

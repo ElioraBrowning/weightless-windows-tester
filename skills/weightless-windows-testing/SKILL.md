@@ -1,13 +1,13 @@
 ---
-name: desktop-testing
-description: OS-level Windows 10/11 desktop vision, offline Windows.Media.Ocr, multi-window focus control, cursor/keyboard input, clipboard, and file drag-and-drop testing via the desktop-vision MCP server. Use when automating or verifying native Windows desktop applications or multi-window workflows.
+name: weightless-windows-testing
+description: OS-level Windows 10/11 desktop vision, offline Windows.Media.Ocr, multi-window focus control, cursor/keyboard input with physical mousepad suppression, clipboard, and file drag-and-drop testing via the weightless-windows-vision MCP server. Use when automating or verifying native Windows desktop applications or multi-window workflows.
 ---
 
 # Desktop Vision & Cursor Control Workflow
 
-This skill pairs with the **`desktop-vision`** MCP server (`server/server.py`, launched portably via `scripts/launcher.py`) and the **`desktop-tester`** subagent on Windows 10/11.
+This skill pairs with the **`weightless-windows-vision`** MCP server (`server/server.py`, launched portably via `scripts/launcher.py`) and the **`weightless-windows-tester`** subagent on Windows 10/11.
 
-## Tool Reference (`desktop-vision` MCP)
+## Tool Reference (`weightless-windows-vision` MCP)
 
 ### 1. Vision & Resolution
 - `get_screen_resolution()`: Returns `virtual_screen` and per-monitor bounds (`monitor_index=0` is primary, `1..N` are individual monitors, `-1` is all monitors).
