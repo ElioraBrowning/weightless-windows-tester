@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Woolbur Companion &amp; Memory</title>
+  <script src="preload.js"></script>
+  <style>
+    :root {
+      --bg: var(--vscode-sideBar-background, var(--background, #0d0b14));
+      --surface: var(--vscode-editor-background, #151122);
+      --surface-2: rgba(255, 255, 255, 0.045);
+      --border: var(--vscode-panel-border, rgba(167, 139, 250, 0.22));
+      --fg: var(--vscode-foreground, var(--foreground, #f4f2fb));
+      --muted: var(--vscode-descriptionForeground, #a19bb8);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.16);
+      --danger: #f87171;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --radius: 12px;
+      --font: var(--vscode-font-family, "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      font-size: 12.5px;
+      line-height: 1.45;
+      overflow-x: hidden;
+    }
+
+    .shell {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Live Hero Preview */
+    .hero {
+      position: relative;
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: radial-gradient(circle at 20% 15%, var(--accent-soft), transparent 58%),
+                  linear-gradient(155deg, #1b162d 0%, #120e1e 100%);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .hero-stage {
+      width: 92px;
+      height: 92px;
+      flex: 0 0 92px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: rgba(8, 6, 14, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+    }
+
+    .hero-woolbur-wrap {
+      transform-origin: center;
+      transition: transform 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
+      animation: wool-bob 2.2s ease-in-out infinite;
+    }
+
+    @keyframes wool-bob {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-3px); }
+    }
+
+    .hero-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.01em;
+    }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(52, 211, 153, 0.14);
+      color: var(--ok);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      white-space: nowrap;
+    }
+    .live-pill.offline {
+      background: rgba(248, 113, 113, 0.14);
+      color: var(--danger);
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .hud-mock {
+      padding: 6px 9px;
+      border-radius: 8px;
+      background: rgba(14, 10, 22, 0.88);
+      border: 1px solid var(--accent);
+      font-size: 11px;
+      color: #e9e4fa;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .hud-mock.hidden-state {
+      opacity: 0.35;
+      border-style: dashed;
+    }
+    .hud-badge {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      text-transform: uppercase;
+      flex: 0 0 auto;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .tab-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 7px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn:hover { color: var(--fg); background: var(--surface-2); }
+    .tab-btn.active {
+      background: var(--accent-soft);
+      color: var(--fg);
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    .badge-count {
+      font-size: 10px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--fg);
+    }
+
+    .panel { display: none; flex-direction: column; gap: 10px; }
+    .panel.active { display: flex; }
+
+    /* Cards & Controls */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mood-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .mood-chip {
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--fg);
+      border-radius: 9px;
+      padding: 7px 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-size: 11.5px;
+      font-weight: 600;
+      transition: all 0.12s;
+    }
+    .mood-chip:hover { border-color: var(--accent); }
+    .mood-chip.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .swatch-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.12s, border-color 0.12s;
+    }
+    .swatch:hover { transform: scale(1.1); }
+    .swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+    .color-input {
+      width: 28px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .control-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .control-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .val-pill {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--fg);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 4px 0;
+    }
+    .toggle-label {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .toggle-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      flex: 0 0 36px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.15s;
+    }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(16px); }
+
+    .seg-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .seg-btn {
+      padding: 7px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .seg-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--fg);
+    }
+
+    .info-callout {
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      border-radius: 8px;
+      padding: 7px 9px;
+    }
+
+    /* Buttons & Inputs */
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--fg);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .btn:hover { border-color: var(--accent); }
+    .btn.primary {
+      background: var(--accent);
+      color: #09101a;
+      border-color: transparent;
+    }
+    .btn.danger {
+      color: var(--danger);
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+    .btn.sm { padding: 4px 8px; font-size: 11px; }
+
+    input[type="text"], input[type="number"], textarea {
+      width: 100%;
+      background: rgba(8, 6, 14, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--fg);
+      padding: 6px 8px;
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .row-flex {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Memory List & Editor */
+    .app-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .app-card {
+      padding: 9px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .app-card:hover, .app-card.selected {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .app-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .kv-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .kv-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 8px;
+      background: rgba(8, 6, 14, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 11.5px;
+    }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 16px 8px;
+      font-size: 11.5px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      background: #1d1730;
+      border: 1px solid var(--accent);
+      color: #fff;
+      font-size: 11.5px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px);
+      transition: opacity 0.18s, transform 0.18s;
+      z-index: 50;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- Hero Preview -->
+    <div class="hero">
+      <div class="hero-stage" id="heroStage" title="Click Woolbur for a happy blink!">
+        <div id="heroWoolburWrap" class="hero-woolbur-wrap">
+          <img id="woolburPreviewImg" width="84" height="84" alt="Woolbur Cloud Companion" style="display:block;" />
+        </div>
+      </div>
+      <div class="hero-info">
+        <div class="hero-top">
+          <div class="title-row">Woolbur Studio</div>
+          <span id="livePill" class="live-pill offline"><span class="live-dot"></span><span id="liveText">Connecting</span></span>
+        </div>
+        <div id="heroSummary" class="toggle-sub">Pixel-matched with desktop overlay</div>
+        <div id="hudMock" class="hud-mock">
+          <span class="hud-badge" id="hudBadge">AUTO</span>
+          <span id="hudMockText">Watching desktop • 0.5x overview</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="appearance">Appearance</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+      <button class="tab-btn" data-tab="memory">App Memory <span id="memCountBadge" class="badge-count">0</span></button>
+    </div>
+
+    <!-- Tab 1: Appearance -->
+    <section id="tab-appearance" class="panel active">
+      <div class="card">
+        <div class="card-title">
+          <span>Accessory Set</span>
+          <button id="resetAppBtn" class="btn sm" type="button">Reset</button>
+        </div>
+        <div class="mood-grid" id="moodGrid">
+          <button class="mood-chip" data-acc="auto" title="Switch outfit automatically by agent task">Auto</button>
+          <button class="mood-chip" data-acc="nerd" title="Round glasses, pencil behind ear &amp; bowtie">Nerd</button>
+          <button class="mood-chip" data-acc="detective" title="Deerstalker cap, glasses &amp; magnifier">Detective</button>
+          <button class="mood-chip" data-acc="punk" title="Headphones, star clip &amp; studded collar">Punk</button>
+          <button class="mood-chip" data-acc="goth" title="Bat-wing bow clip &amp; lavender choker">Goth</button>
+          <button class="mood-chip" data-acc="happy" title="Daisy flower crown, ribbon bow &amp; stars">Starlight</button>
+          <button class="mood-chip" data-acc="none" title="Pure cloud Woolbur with no accessories">Pure Cloud</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Wool, Horns &amp; Accent Theme</div>
+        <div class="control-row">
+          <div class="control-head">
+            <span>Wool Fleece Color</span>
+            <span id="woolHexVal" class="val-pill">#fffbf5</span>
+          </div>
+          <div class="swatch-row" id="woolSwatches">
+            <button class="swatch" data-wool="#fffbf5" style="background:#fffbf5" title="Warm Cream"></button>
+            <button class="swatch" data-wool="#f3e8ff" style="background:#f3e8ff" title="Lavender Mist"></button>
+            <button class="swatch" data-wool="#dcfce7" style="background:#dcfce7" title="Mint Cloud"></button>
+            <button class="swatch" data-wool="#e0f2fe" style="background:#e0f2fe" title="Sky Puff"></button>
+            <button class="swatch" data-wool="#fecdf7" style="background:#fecdf7" title="Cotton Candy Pink"></button>
+            <button class="swatch" data-wool="#4a4458" style="background:#4a4458" title="Midnight Wool"></button>
+            <input id="woolColorPicker" class="color-input" type="color" value="#fffbf5" aria-label="Custom wool color" />
+          </div>
+        </div>
+
+        <div class="control-row">
+          <div class="control-head">
+            <span>Curled Horn Color</span>
+            <span id="hornHexVal" class="val-pill">#fde68a</span>
+          </div>
+          <div class="swatch-row" id="hornSwatches">
+            <button class="swatch" data-horn="#fde68a" style="background:#fde68a" title="Buttercream Gold"></button>
+            <button class="swatch" data-horn="#e7b98a" style="background:#e7b98a" title="Warm Croissant Tan"></button>
+            <button class="swatch" data-horn="#fbbf24" style="background:#fbbf24" title="Honey Amber"></button>
+            <button class="swatch" data-horn="#f9a8d4" style="background:#f9a8d4" title="Blossom Rose"></button>
+            <button class="swatch" data-horn="#d8b4fe" style="background:#d8b4fe" title="Soft Lilac"></button>
+            <button class="swatch" data-horn="#4c4360" style="background:#4c4360" title="Plum Onyx"></button>
+            <input id="hornColorPicker" class="color-input" type="color" value="#fde68a" aria-label="Custom horn color" />
+          </div>
+        </div>
+
+        <div class="control-row">
+          <div class="control-head">
+            <span>HUD &amp; Bubble Accent</span>
+            <span id="accentHexVal" class="val-pill">#38bdf8</span>
+          </div>
+          <div class="swatch-row" id="accentSwatches">
+            <button class="swatch" data-accent="#38bdf8" style="background:#38bdf8" title="Status Auto (#38bdf8)"></button>
+            <button class="swatch" data-accent="#f472b6" style="background:#f472b6" title="Rose"></button>
+            <button class="swatch" data-accent="#34d399" style="background:#34d399" title="Mint"></button>
+            <button class="swatch" data-accent="#fbbf24" style="background:#fbbf24" title="Amber"></button>
+            <button class="swatch" data-accent="#a78bfa" style="background:#a78bfa" title="Violet"></button>
+            <input id="accentColorPicker" class="color-input" type="color" value="#38bdf8" aria-label="Custom accent color" />
+          </div>
+          <span class="toggle-sub">Default `#38bdf8` uses dynamic state colors (green/amber/pink); any custom color themes the HUD.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Scale, Opacity &amp; Visibility</div>
+        <div class="control-row">
+          <div class="control-head">
+            <span>Overlay Scale</span>
+            <span id="scaleVal" class="val-pill">1.00x</span>
+          </div>
+          <input id="scaleSlider" type="range" min="0.65" max="1.6" step="0.05" value="1.0" />
+        </div>
+        <div class="control-row">
+          <div class="control-head">
+            <span>Overlay Opacity</span>
+            <span id="opacityVal" class="val-pill">95%</span>
+          </div>
+          <input id="opacitySlider" type="range" min="0.4" max="1.0" step="0.05" value="0.95" />
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">
+            <span>Show HUD Status Banner</span>
+            <span class="toggle-sub">Top-center glass card with Goal, Current Step, and hints</span>
+          </div>
+          <label class="switch"><input id="showHudChk" type="checkbox" /><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">
+            <span>Show Woolbur Companion</span>
+            <span class="toggle-sub">Animated sprite &amp; speech bubble over active windows</span>
+          </div>
+          <label class="switch"><input id="showWoolburChk" type="checkbox" /><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">
+            <span>Hop to Mouse Cursor</span>
+            <span class="toggle-sub">Follow cursor when clicking; keep off to stay parked on HUD</span>
+          </div>
+          <label class="switch"><input id="followCursorChk" type="checkbox" /><span class="slider"></span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Settings -->
+    <section id="tab-settings" class="panel">
+      <div class="card">
+        <div class="card-title">
+          <span>Adaptive Screenshot Resolution</span>
+          <button id="resetSettingsBtn" class="btn sm" type="button">Reset</button>
+        </div>
+        <div class="info-callout">
+          Full-screen overview captures default to lower resolution with exact physical grid coordinates.
+          Zoomed <code>region</code> crops and explicit <code>scale=1.0</code> calls automatically capture full native detail.
+        </div>
+        <div class="control-row">
+          <div class="control-head">
+            <span>Default Full-Screen Scale</span>
+            <span id="shotScaleVal" class="val-pill">0.50x (960×600)</span>
+          </div>
+          <input id="shotScaleSlider" type="range" min="0.25" max="1.0" step="0.05" value="0.5" />
+        </div>
+        <div class="control-row">
+          <div class="control-head"><span>Default Overview Format</span></div>
+          <div class="seg-group" id="fmtGroup">
+            <button class="seg-btn" data-fmt="jpeg" type="button">JPEG (Fast Overview)</button>
+            <button class="seg-btn" data-fmt="png" type="button">PNG (Lossless)</button>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">
+            <span>Show Physical Coordinate Grid</span>
+            <span class="toggle-sub">Crisp 0..width / 0..height labels drawn after downscaling</span>
+          </div>
+          <label class="switch"><input id="defaultGridChk" type="checkbox" /><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Fullscreen &amp; Safety Controls</div>
+        <div class="toggle-row">
+          <div class="toggle-label">
+            <span>Force Over Borderless Fullscreen</span>
+            <span class="toggle-sub">Reversible 1px D3D fullscreen compatibility nudge</span>
+          </div>
+          <label class="switch"><input id="forceFsChk" type="checkbox" /><span class="slider"></span></label>
+        </div>
+        <div class="control-row">
+          <div class="control-head">
+            <span>Triple-Esc Abort Window</span>
+            <span id="escWinVal" class="val-pill">1.8s</span>
+          </div>
+          <input id="escWinSlider" type="range" min="0.6" max="5.0" step="0.2" value="1.8" />
+        </div>
+        <div class="control-row">
+          <div class="control-head">
+            <span>Assist Bubble Trigger Distance</span>
+            <span id="assistPxVal" class="val-pill">45px</span>
+          </div>
+          <input id="assistPxSlider" type="range" min="15" max="150" step="5" value="45" />
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">
+            <span>Auto-Prompt Per-App Memory</span>
+            <span class="toggle-sub">Remind agent to save notes/coords when focusing a new app</span>
+          </div>
+          <label class="switch"><input id="autoSaveMemChk" type="checkbox" /><span class="slider"></span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Per-App Memory -->
+    <section id="tab-memory" class="panel">
+      <div class="card">
+        <div class="row-flex">
+          <input id="memSearch" type="text" placeholder="Filter saved apps or processes..." />
+          <button id="newAppBtn" class="btn primary" type="button">+ New App</button>
+        </div>
+        <div id="appList" class="app-list"></div>
+      </div>
+
+      <div id="appEditorCard" class="card" style="display:none;">
+        <div class="card-title">
+          <span id="editorHeading">Edit App Profile</span>
+          <div class="row-flex">
+            <button id="deleteAppBtn" class="btn danger sm" type="button">Delete</button>
+            <button id="saveAppBtn" class="btn primary sm" type="button">Save Profile</button>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="control-row">
+            <span class="toggle-sub">Display Name</span>
+            <input id="edDisplayName" type="text" placeholder="e.g. Balatro" />
+          </div>
+          <div class="control-row">
+            <span class="toggle-sub">App Key</span>
+            <input id="edAppKey" type="text" placeholder="e.g. balatro" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="control-row">
+            <span class="toggle-sub">Process Names (comma separated)</span>
+            <input id="edProcesses" type="text" placeholder="Balatro.exe" />
+          </div>
+          <div class="control-row">
+            <span class="toggle-sub">Window Title Match Patterns</span>
+            <input id="edTitles" type="text" placeholder="Balatro" />
+          </div>
+        </div>
+
+        <div class="control-row">
+          <span class="card-title">Notes &amp; Quirks</span>
+          <div id="edNotesList" class="kv-list"></div>
+          <div class="row-flex">
+            <input id="newNoteInput" type="text" placeholder="Add UI quirk or strategy note..." />
+            <button id="addNoteBtn" class="btn sm" type="button">Add</button>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <span class="card-title">Saved Screen Coordinates</span>
+          <div id="edCoordsList" class="kv-list"></div>
+          <div class="row-flex">
+            <input id="coordName" type="text" placeholder="label (play_hand)" style="flex:1.2" />
+            <input id="coordX" type="number" placeholder="X" style="width:66px;flex:0 0 66px" />
+            <input id="coordY" type="number" placeholder="Y" style="width:66px;flex:0 0 66px" />
+          </div>
+          <div class="row-flex">
+            <input id="coordDesc" type="text" placeholder="Optional description..." />
+            <button id="addCoordBtn" class="btn sm" type="button">Add Coord</button>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <span class="card-title">Hotkeys</span>
+          <div id="edHotkeysList" class="kv-list"></div>
+          <div class="row-flex">
+            <input id="hkAction" type="text" placeholder="action (new_run)" />
+            <input id="hkKey" type="text" placeholder="key (r)" style="width:90px;flex:0 0 90px" />
+            <button id="addHkBtn" class="btn sm" type="button">Add</button>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <span class="card-title">Custom App Hints / Settings (JSON)</span>
+          <textarea id="edSettingsJson" rows="3" class="mono" placeholder="{}"></textarea>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast">Saved</div>
+
+  <script>
+    const state = {
+      config: null,
+      memory: { apps: {} },
+      selectedKey: null,
+      draft: null,
+      activeTab: "appearance",
+      eventSource: null,
+    };
+
+    function getBaseUrl() {
+      const u = new URL(window.location.href);
+      if (!u.pathname.endsWith("/") && !u.pathname.endsWith(".html")) {
+        u.pathname += "/";
+      }
+      u.search = "";
+      u.hash = "";
+      return u;
+    }
+
+    function getToken() {
+      return new URLSearchParams(window.location.search).get("token") || "";
+    }
+
+    function apiUrl(relPath) {
+      const u = new URL(relPath.replace(/^\//, ""), getBaseUrl());
+      const token = getToken();
+      if (token) u.searchParams.set("token", token);
+      return u.toString();
+    }
+
+    async function apiFetch(relPath, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      const token = getToken();
+      if (token) headers["x-sidecar-token"] = token;
+      if (options.body && !headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
+      const resp = await fetch(apiUrl(relPath), { ...options, headers });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(json.error || `HTTP ${resp.status}`);
+      }
+      return json;
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+    }
+
+    let previewTimer = null;
+    let lastPreviewKey = "";
+    let previewExprOverride = "normal";
+    let previewFrameOverride = 0;
+
+    function updatePreviewSprite(immediate = false) {
+      const app = state.config?.appearance;
+      if (!app) return;
+      const accSet = app.accessory_set || app.mood || "auto";
+      const key = `${accSet}|${app.wool_color}|${app.horn_color}|${previewExprOverride}|${previewFrameOverride}`;
+      if (key === lastPreviewKey) return;
+
+      const loadImg = () => {
+        lastPreviewKey = key;
+        const u = new URL(apiUrl("api/preview.png"));
+        u.searchParams.set("size", "168");
+        u.searchParams.set("accessory_set", accSet);
+        u.searchParams.set("mood", previewExprOverride);
+        u.searchParams.set("frame", String(previewFrameOverride));
+        u.searchParams.set("wool_color", app.wool_color || "#fffbf5");
+        u.searchParams.set("horn_color", app.horn_color || "#fde68a");
+        document.getElementById("woolburPreviewImg").src = u.toString();
+      };
+
+      clearTimeout(previewTimer);
+      if (immediate) loadImg();
+      else previewTimer = setTimeout(loadImg, 45);
+    }
+
+    function applyConfigToUi() {
+      const cfg = state.config;
+      if (!cfg) return;
+      const app = cfg.appearance;
+      const set = cfg.settings;
+      const accSet = app.accessory_set || app.mood || "auto";
+
+      // Apply accent CSS vars
+      document.documentElement.style.setProperty("--accent", app.accent_color);
+      document.documentElement.style.setProperty("--accent-soft", `${app.accent_color}29`);
+
+      // Sync exact pixel-matched Woolbur preview from Python sprite renderer
+      updatePreviewSprite();
+
+      const heroWrap = document.getElementById("heroWoolburWrap");
+      heroWrap.style.opacity = app.show_woolbur ? String(app.opacity) : "0.22";
+      heroWrap.style.filter = app.show_woolbur ? "none" : "grayscale(0.9)";
+      heroWrap.style.transform = `scale(${Math.max(0.76, Math.min(1.16, 0.78 + (app.scale - 0.65) * 0.36)).toFixed(2)})`;
+
+      const hudMock = document.getElementById("hudMock");
+      hudMock.classList.toggle("hidden-state", !app.show_hud);
+      document.getElementById("hudBadge").textContent = accSet === "auto" ? "AUTO" : accSet.toUpperCase();
+      document.getElementById("hudMockText").textContent =
+        `${app.show_hud ? "HUD On" : "HUD Hidden"} • ${set.default_screenshot_scale.toFixed(2)}x ${set.default_screenshot_format.toUpperCase()}`;
+
+      // Appearance controls
+      document.querySelectorAll("#moodGrid .mood-chip").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.acc === accSet);
+      });
+      document.querySelectorAll("#woolSwatches .swatch").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.wool === app.wool_color);
+      });
+      document.getElementById("woolColorPicker").value = app.wool_color;
+      document.getElementById("woolHexVal").textContent = app.wool_color;
+
+      document.querySelectorAll("#hornSwatches .swatch").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.horn === app.horn_color);
+      });
+      document.getElementById("hornColorPicker").value = app.horn_color || "#fde68a";
+      document.getElementById("hornHexVal").textContent = app.horn_color || "#fde68a";
+
+      document.querySelectorAll("#accentSwatches .swatch").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.accent === app.accent_color);
+      });
+      document.getElementById("accentColorPicker").value = app.accent_color;
+      document.getElementById("accentHexVal").textContent =
+        app.accent_color === "#38bdf8" ? "#38bdf8 (auto)" : app.accent_color;
+
+      const setVal = (id, v) => {
+        const el = document.getElementById(id);
+        if (document.activeElement !== el) el.value = v;
+      };
+      setVal("scaleSlider", app.scale);
+      document.getElementById("scaleVal").textContent = `${app.scale.toFixed(2)}x`;
+      setVal("opacitySlider", app.opacity);
+      document.getElementById("opacityVal").textContent = `${Math.round(app.opacity * 100)}%`;
+      document.getElementById("showHudChk").checked = Boolean(app.show_hud);
+      document.getElementById("showWoolburChk").checked = Boolean(app.show_woolbur);
+      document.getElementById("followCursorChk").checked = Boolean(app.follow_cursor);
+
+      // Settings controls
+      setVal("shotScaleSlider", set.default_screenshot_scale);
+      const pxW = Math.round(1920 * set.default_screenshot_scale);
+      const pxH = Math.round(1200 * set.default_screenshot_scale);
+      document.getElementById("shotScaleVal").textContent =
+        `${set.default_screenshot_scale.toFixed(2)}x (${pxW}×${pxH})`;
+      document.querySelectorAll("#fmtGroup .seg-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.fmt === set.default_screenshot_format);
+      });
+      document.getElementById("defaultGridChk").checked = Boolean(set.default_grid);
+      document.getElementById("forceFsChk").checked = Boolean(set.force_fullscreen);
+      setVal("escWinSlider", set.triple_esc_window_seconds);
+      document.getElementById("escWinVal").textContent = `${set.triple_esc_window_seconds.toFixed(1)}s`;
+      setVal("assistPxSlider", set.assist_move_threshold_px);
+      document.getElementById("assistPxVal").textContent = `${Math.round(set.assist_move_threshold_px)}px`;
+      document.getElementById("autoSaveMemChk").checked = Boolean(set.auto_save_app_memory);
+    }
+
+    let cfgPatchTimer = null;
+    let pendingCfgPatch = { appearance: {}, settings: {} };
+    function queueConfigPatch(section, values, immediate = false) {
+      Object.assign(state.config[section], values);
+      Object.assign(pendingCfgPatch[section], values);
+      applyConfigToUi();
+
+      const flush = async () => {
+        const patch = pendingCfgPatch;
+        pendingCfgPatch = { appearance: {}, settings: {} };
+        try {
+          const res = await apiFetch("api/config", { method: "POST", body: JSON.stringify(patch) });
+          state.config = res.config;
+          applyConfigToUi();
+          showToast("Synced to Woolbur");
+        } catch (err) {
+          showToast(`Error: ${err.message}`);
+        }
+      };
+
+      clearTimeout(cfgPatchTimer);
+      if (immediate) {
+        flush();
+      } else {
+        cfgPatchTimer = setTimeout(flush, 120);
+      }
+    }
+
+    // Per-App Memory UI
+    function renderAppList() {
+      const apps = Object.values(state.memory?.apps || {});
+      document.getElementById("memCountBadge").textContent = String(apps.length);
+      const q = document.getElementById("memSearch").value.trim().toLowerCase();
+      const filtered = apps.filter((a) => {
+        if (!q) return true;
+        const hay = [
+          a.display_name,
+          a.app_id,
+          ...(a.process_names || []),
+          ...(a.title_patterns || []),
+          ...(a.notes || []),
+        ].join(" ").toLowerCase();
+        return hay.includes(q);
+      });
+
+      const listEl = document.getElementById("appList");
+      if (!filtered.length) {
+        listEl.innerHTML = `<div class="empty-state">${
+          apps.length ? "No apps match that filter." : "No per-app memories yet. Focus an app or click + New App."
+        }</div>`;
+        return;
+      }
+
+      listEl.innerHTML = "";
+      for (const app of filtered) {
+        const item = document.createElement("div");
+        const appId = app.app_id || app.app_key;
+        item.className = `app-card ${state.selectedKey === appId ? "selected" : ""}`;
+        const nNotes = (app.notes || []).length;
+        const nCoords = Object.keys(app.coordinates || {}).length;
+        const nHk = Object.keys(app.hotkeys || {}).length;
+        const procLabel = (app.process_names || []).join(", ") || appId;
+        item.innerHTML = `
+          <div style="min-width:0">
+            <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(app.display_name)}</div>
+            <div class="app-meta">${escapeHtml(procLabel)} • ${nNotes} notes • ${nCoords} coords • ${nHk} keys</div>
+          </div>
+          <span class="val-pill">Edit</span>
+        `;
+        item.addEventListener("click", () => selectApp(appId));
+        listEl.appendChild(item);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function selectApp(appKey, newDraft = null) {
+      const existing = newDraft || state.memory?.apps?.[appKey];
+      if (!existing) {
+        state.selectedKey = null;
+        state.draft = null;
+        document.getElementById("appEditorCard").style.display = "none";
+        renderAppList();
+        return;
+      }
+      state.selectedKey = existing.app_id || existing.app_key || null;
+      state.draft = JSON.parse(JSON.stringify(existing));
+      renderEditor();
+      renderAppList();
+    }
+
+    function renderEditor() {
+      const card = document.getElementById("appEditorCard");
+      const d = state.draft;
+      if (!d) {
+        card.style.display = "none";
+        return;
+      }
+      card.style.display = "flex";
+      document.getElementById("editorHeading").textContent = d.display_name ? `App: ${d.display_name}` : "New App Memory";
+      document.getElementById("edDisplayName").value = d.display_name || "";
+      document.getElementById("edAppKey").value = d.app_id || d.app_key || "";
+      document.getElementById("edProcesses").value = (d.process_names || []).join(", ");
+      document.getElementById("edTitles").value = (d.title_patterns || []).join(", ");
+      document.getElementById("edSettingsJson").value = JSON.stringify(d.settings || {}, null, 2);
+
+      // Notes
+      const notesEl = document.getElementById("edNotesList");
+      notesEl.innerHTML = "";
+      (d.notes || []).forEach((note, idx) => {
+        const row = document.createElement("div");
+        row.className = "kv-item";
+        row.innerHTML = `<span>${escapeHtml(note)}</span><button class="btn danger sm" type="button">×</button>`;
+        row.querySelector("button").addEventListener("click", () => {
+          d.notes.splice(idx, 1);
+          renderEditor();
+        });
+        notesEl.appendChild(row);
+      });
+
+      // Coordinates
+      const coordsEl = document.getElementById("edCoordsList");
+      coordsEl.innerHTML = "";
+      Object.entries(d.coordinates || {}).forEach(([k, v]) => {
+        const detail = v?.description || v?.label || "";
+        const desc = detail ? ` — ${detail}` : "";
+        const row = document.createElement("div");
+        row.className = "kv-item";
+        row.innerHTML = `<span><strong class="mono">${escapeHtml(k)}</strong>: <span class="mono">(${v?.x ?? "?"}, ${v?.y ?? "?"})</span>${escapeHtml(desc)}</span><button class="btn danger sm" type="button">×</button>`;
+        row.querySelector("button").addEventListener("click", () => {
+          delete d.coordinates[k];
+          renderEditor();
+        });
+        coordsEl.appendChild(row);
+      });
+
+      // Hotkeys
+      const hkEl = document.getElementById("edHotkeysList");
+      hkEl.innerHTML = "";
+      Object.entries(d.hotkeys || {}).forEach(([k, v]) => {
+        const row = document.createElement("div");
+        row.className = "kv-item";
+        row.innerHTML = `<span><strong>${escapeHtml(k)}</strong>: <span class="val-pill">${escapeHtml(v)}</span></span><button class="btn danger sm" type="button">×</button>`;
+        row.querySelector("button").addEventListener("click", () => {
+          delete d.hotkeys[k];
+          renderEditor();
+        });
+        hkEl.appendChild(row);
+      });
+    }
+
+    function applyStateSnapshot(snap, fromSse = false) {
+      if (!snap) return;
+      state.config = snap.config;
+      state.memory = snap.memory || { apps: {} };
+      applyConfigToUi();
+      renderAppList();
+      if (fromSse && state.selectedKey && state.memory.apps[state.selectedKey]) {
+        // Refresh editor silently unless user actively typing inside editor inputs
+        const activeTag = document.activeElement?.tagName;
+        if (activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
+          state.draft = JSON.parse(JSON.stringify(state.memory.apps[state.selectedKey]));
+          renderEditor();
+        }
+      }
+      const pill = document.getElementById("livePill");
+      const text = document.getElementById("liveText");
+      pill.classList.remove("offline");
+      text.textContent = "Live";
+    }
+
+    function bindEvents() {
+      // Tabs
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+          document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === `tab-${btn.dataset.tab}`));
+        });
+      });
+
+      // Click hero Woolbur to toggle happy expression preview briefly
+      let joyTimer = null;
+      document.getElementById("heroStage").addEventListener("click", () => {
+        previewExprOverride = "happy";
+        updatePreviewSprite(true);
+        clearTimeout(joyTimer);
+        joyTimer = setTimeout(() => {
+          previewExprOverride = "normal";
+          updatePreviewSprite(true);
+        }, 900);
+      });
+
+      // Accessory Set
+      document.querySelectorAll("#moodGrid .mood-chip").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const acc = btn.dataset.acc;
+          queueConfigPatch(
+            "appearance",
+            { accessory_set: acc, mood: acc === "none" ? "auto" : acc },
+            true,
+          );
+        });
+      });
+
+      // Colors (Wool, Horns, Accent)
+      document.querySelectorAll("#woolSwatches .swatch").forEach((btn) => {
+        btn.addEventListener("click", () => queueConfigPatch("appearance", { wool_color: btn.dataset.wool }, true));
+      });
+      document.getElementById("woolColorPicker").addEventListener("input", (e) => {
+        queueConfigPatch("appearance", { wool_color: e.target.value });
+      });
+
+      document.querySelectorAll("#hornSwatches .swatch").forEach((btn) => {
+        btn.addEventListener("click", () => queueConfigPatch("appearance", { horn_color: btn.dataset.horn }, true));
+      });
+      document.getElementById("hornColorPicker").addEventListener("input", (e) => {
+        queueConfigPatch("appearance", { horn_color: e.target.value });
+      });
+
+      document.querySelectorAll("#accentSwatches .swatch").forEach((btn) => {
+        btn.addEventListener("click", () => queueConfigPatch("appearance", { accent_color: btn.dataset.accent }, true));
+      });
+      document.getElementById("accentColorPicker").addEventListener("input", (e) => {
+        queueConfigPatch("appearance", { accent_color: e.target.value });
+      });
+
+      // Sliders & checkboxes (Appearance)
+      document.getElementById("scaleSlider").addEventListener("input", (e) => {
+        queueConfigPatch("appearance", { scale: Number(e.target.value) });
+      });
+      document.getElementById("opacitySlider").addEventListener("input", (e) => {
+        queueConfigPatch("appearance", { opacity: Number(e.target.value) });
+      });
+      document.getElementById("showHudChk").addEventListener("change", (e) => {
+        queueConfigPatch("appearance", { show_hud: e.target.checked }, true);
+      });
+      document.getElementById("showWoolburChk").addEventListener("change", (e) => {
+        queueConfigPatch("appearance", { show_woolbur: e.target.checked }, true);
+      });
+      document.getElementById("followCursorChk").addEventListener("change", (e) => {
+        queueConfigPatch("appearance", { follow_cursor: e.target.checked }, true);
+      });
+
+      // Settings controls
+      document.getElementById("shotScaleSlider").addEventListener("input", (e) => {
+        queueConfigPatch("settings", { default_screenshot_scale: Number(e.target.value) });
+      });
+      document.querySelectorAll("#fmtGroup .seg-btn").forEach((btn) => {
+        btn.addEventListener("click", () => queueConfigPatch("settings", { default_screenshot_format: btn.dataset.fmt }, true));
+      });
+      document.getElementById("defaultGridChk").addEventListener("change", (e) => {
+        queueConfigPatch("settings", { default_grid: e.target.checked }, true);
+      });
+      document.getElementById("forceFsChk").addEventListener("change", (e) => {
+        queueConfigPatch("settings", { force_fullscreen: e.target.checked }, true);
+      });
+      document.getElementById("escWinSlider").addEventListener("input", (e) => {
+        queueConfigPatch("settings", { triple_esc_window_seconds: Number(e.target.value) });
+      });
+      document.getElementById("assistPxSlider").addEventListener("input", (e) => {
+        queueConfigPatch("settings", { assist_move_threshold_px: Number(e.target.value) });
+      });
+      document.getElementById("autoSaveMemChk").addEventListener("change", (e) => {
+        queueConfigPatch("settings", { auto_save_app_memory: e.target.checked }, true);
+      });
+
+      document.getElementById("resetAppBtn").addEventListener("click", async () => {
+        const res = await apiFetch("api/config/reset", { method: "POST", body: JSON.stringify({ scope: "appearance" }) });
+        state.config = res.config;
+        applyConfigToUi();
+        showToast("Appearance reset");
+      });
+
+      document.getElementById("resetSettingsBtn").addEventListener("click", async () => {
+        const res = await apiFetch("api/config/reset", { method: "POST", body: JSON.stringify({ scope: "settings" }) });
+        state.config = res.config;
+        applyConfigToUi();
+        showToast("Settings reset");
+      });
+
+      // App Memory actions
+      document.getElementById("memSearch").addEventListener("input", renderAppList);
+      document.getElementById("newAppBtn").addEventListener("click", () => {
+        selectApp(null, {
+          app_id: "",
+          display_name: "",
+          process_names: [],
+          title_patterns: [],
+          notes: [],
+          coordinates: {},
+          hotkeys: {},
+          settings: {},
+        });
+      });
+
+      const syncDraftTextFields = () => {
+        if (!state.draft) return;
+        const splitCsv = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
+        state.draft.display_name = document.getElementById("edDisplayName").value;
+        state.draft.app_id = document.getElementById("edAppKey").value;
+        state.draft.process_names = splitCsv(document.getElementById("edProcesses").value);
+        state.draft.title_patterns = splitCsv(document.getElementById("edTitles").value);
+        try {
+          const rawSet = document.getElementById("edSettingsJson").value.trim();
+          if (rawSet) state.draft.settings = JSON.parse(rawSet);
+        } catch {
+          // Keep existing settings until valid JSON is saved
+        }
+      };
+
+      document.getElementById("addNoteBtn").addEventListener("click", () => {
+        const inp = document.getElementById("newNoteInput");
+        const val = inp.value.trim();
+        if (!val || !state.draft) return;
+        syncDraftTextFields();
+        state.draft.notes = state.draft.notes || [];
+        if (!state.draft.notes.includes(val)) state.draft.notes.push(val);
+        inp.value = "";
+        renderEditor();
+      });
+
+      document.getElementById("addCoordBtn").addEventListener("click", () => {
+        const name = document.getElementById("coordName").value.trim();
+        const x = Number(document.getElementById("coordX").value);
+        const y = Number(document.getElementById("coordY").value);
+        const desc = document.getElementById("coordDesc").value.trim();
+        if (!name || !Number.isFinite(x) || !Number.isFinite(y) || !state.draft) return;
+        syncDraftTextFields();
+        state.draft.coordinates = state.draft.coordinates || {};
+        state.draft.coordinates[name] = desc ? { x: Math.round(x), y: Math.round(y), description: desc } : { x: Math.round(x), y: Math.round(y) };
+        document.getElementById("coordName").value = "";
+        document.getElementById("coordX").value = "";
+        document.getElementById("coordY").value = "";
+        document.getElementById("coordDesc").value = "";
+        renderEditor();
+      });
+
+      document.getElementById("addHkBtn").addEventListener("click", () => {
+        const action = document.getElementById("hkAction").value.trim();
+        const key = document.getElementById("hkKey").value.trim();
+        if (!action || !key || !state.draft) return;
+        syncDraftTextFields();
+        state.draft.hotkeys = state.draft.hotkeys || {};
+        state.draft.hotkeys[action] = key;
+        document.getElementById("hkAction").value = "";
+        document.getElementById("hkKey").value = "";
+        renderEditor();
+      });
+
+      document.getElementById("saveAppBtn").addEventListener("click", async () => {
+        if (!state.draft) return;
+        const displayName = document.getElementById("edDisplayName").value.trim();
+        const appKey = document.getElementById("edAppKey").value.trim() || displayName;
+        if (!appKey) {
+          showToast("Enter Display Name or App Key");
+          return;
+        }
+        let parsedSettings = {};
+        const rawSet = document.getElementById("edSettingsJson").value.trim();
+        if (rawSet) {
+          try {
+            parsedSettings = JSON.parse(rawSet);
+          } catch {
+            showToast("Invalid JSON in Custom Settings");
+            return;
+          }
+        }
+        const splitCsv = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
+        const payload = {
+          app_id: appKey,
+          display_name: displayName || appKey,
+          process_names: splitCsv(document.getElementById("edProcesses").value),
+          title_patterns: splitCsv(document.getElementById("edTitles").value),
+          notes: state.draft.notes || [],
+          coordinates: state.draft.coordinates || {},
+          hotkeys: state.draft.hotkeys || {},
+          settings: parsedSettings,
+        };
+        try {
+          const res = await apiFetch("api/memory", { method: "POST", body: JSON.stringify(payload) });
+          state.selectedKey = res.app.app_id || res.app.app_key;
+          state.memory = res.memory;
+          state.draft = JSON.parse(JSON.stringify(res.app));
+          renderAppList();
+          renderEditor();
+          showToast(`Saved ${res.app.display_name}`);
+        } catch (err) {
+          showToast(`Save failed: ${err.message}`);
+        }
+      });
+
+      document.getElementById("deleteAppBtn").addEventListener("click", async () => {
+        if (!state.selectedKey) {
+          selectApp(null);
+          return;
+        }
+        try {
+          const res = await apiFetch("api/memory/delete", {
+            method: "POST",
+            body: JSON.stringify({ app_id: state.selectedKey }),
+          });
+          state.memory = res.memory;
+          selectApp(null);
+          showToast("App memory deleted");
+        } catch (err) {
+          showToast(`Delete failed: ${err.message}`);
+        }
+      });
+    }
+
+    function connectEvents() {
+      if (state.eventSource) state.eventSource.close();
+      const es = new EventSource(apiUrl("api/events"));
+      es.addEventListener("state", (ev) => {
+        try {
+          applyStateSnapshot(JSON.parse(ev.data), true);
+        } catch {
+          // Ignore malformed event
+        }
+      });
+      es.onerror = () => {
+        document.getElementById("livePill").classList.add("offline");
+        document.getElementById("liveText").textContent = "Reconnecting";
+      };
+      state.eventSource = es;
+    }
+
+    async function boot() {
+      bindEvents();
+      try {
+        const snap = await apiFetch("api/state");
+        applyStateSnapshot(snap, false);
+        connectEvents();
+      } catch (err) {
+        showToast(`Failed to connect: ${err.message}`);
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>
